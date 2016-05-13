@@ -14,11 +14,12 @@ import Control.Monad.State.Strict
 import Control.DeepSeq
 import GHC.Generics
 import Data.ByteString (ByteString)
-import Data.Vector (Vector, fromList, (!))
+import Data.Vector (fromList, (!))
 
 import Database.Redis.Core
 import Database.Redis.Protocol
 import Database.Redis.Types
+import Database.Redis.Unsafe (Queued (..))
 
 
 -- |Command-context inside of MULTI\/EXEC transactions. Use 'multiExec' to run
@@ -42,31 +43,6 @@ instance RedisCtx RedisTx Queued where
         i <- get
         put (i+1)
         return $ Queued (decode . (!i))
-
--- |A 'Queued' value represents the result of a command inside a transaction. It
---  is a proxy object for the /actual/ result, which will only be available
---  after returning from a 'multiExec' transaction.
---
---  'Queued' values are composable by utilizing the 'Functor', 'Applicative' or
---  'Monad' interfaces.
-data Queued a = Queued (Vector Reply -> Either Reply a)
-
-instance Functor Queued where
-    fmap f (Queued g) = Queued (fmap f . g)
-
-instance Applicative Queued where
-    pure x                = Queued (const $ Right x)
-    Queued f <*> Queued x = Queued $ \rs -> do
-                                        f' <- f rs
-                                        x' <- x rs
-                                        return (f' x')
-
-instance Monad Queued where
-    return         = pure
-    Queued x >>= f = Queued $ \rs -> do
-                                x' <- x rs
-                                let Queued f' = f x'
-                                f' rs
 
 -- | Result of a 'multiExec' transaction.
 data TxResult a

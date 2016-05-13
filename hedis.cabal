@@ -63,6 +63,8 @@ library
   if flag(dev)
     ghc-prof-options: -auto-all
   exposed-modules:  Database.Redis
+                  , Database.Redis.Unsafe
+
   build-depends:    scanner >= 0.2,
                     base >= 4.6 && < 5,
                     bytestring >= 0.9,
